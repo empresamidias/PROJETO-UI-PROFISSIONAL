@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { VFS, Workflow } from "../types";
+import { VFS, Workflow } from "../types.ts";
 
 export const generateAppCode = async (prompt: string, workflowContext?: Workflow): Promise<VFS> => {
   // Always initialize right before use to ensure latest API key if applicable as per guidelines.

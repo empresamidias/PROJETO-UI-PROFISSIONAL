@@ -1,14 +1,14 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { VFS, FileName, ConnectionStatus, MCPSettings, Workflow, Language, ViewMode } from './types';
-import { BASE_URL } from './constants';
-import { generateAppCode } from './services/geminiService';
-import { syncProject } from './services/syncService';
-import { mcpService } from './services/mcpService';
+import { VFS, FileName, ConnectionStatus, MCPSettings, Workflow, Language, ViewMode } from './types.ts';
+import { BASE_URL } from './constants.tsx';
+import { generateAppCode } from './services/geminiService.ts';
+import { syncProject } from './services/syncService.ts';
+import { mcpService } from './services/mcpService.ts';
 
 const translations = {
   'pt-br': {
-    title: 'AI-CRAFT STUDIO',
+    title: 'AIGoogle Studio',
     engineOnline: 'Online',
     engineOffline: 'Offline',
     connecting: 'Conectando...',
@@ -47,7 +47,7 @@ const translations = {
     noProjectSelected: 'Nenhum projeto selecionado'
   },
   'en': {
-    title: 'AI-CRAFT STUDIO',
+    title: 'AIGoogle Studio',
     engineOnline: 'Online',
     engineOffline: 'Offline',
     connecting: 'Connecting...',
@@ -198,6 +198,26 @@ export default function App() {
     }
   }, [addLog]);
 
+  const fetchFileContent = useCallback(async (projId: string, fileName: string) => {
+    setIsLoadingFile(true);
+    try {
+      const response = await fetch(`${BASE_URL}/get-file-content?projectId=${projId}&fileName=${encodeURIComponent(fileName)}`, {
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const content = typeof data === 'string' ? data : (data.content || '');
+        setVfs(prev => ({ ...prev, [fileName]: content }));
+      } else {
+        addLog(`Error reading ${fileName}: ${response.statusText}`, 'error');
+      }
+    } catch (err) {
+      addLog(`Failed to fetch content for ${fileName}`, 'error');
+    } finally {
+      setIsLoadingFile(false);
+    }
+  }, [addLog]);
+
   const fetchFileList = useCallback(async (id: string) => {
     if (!id) return;
     try {
@@ -223,27 +243,7 @@ export default function App() {
     } catch (err) {
       addLog(`Failed to fetch file list for ${id}`, 'error');
     }
-  }, [addLog]);
-
-  const fetchFileContent = async (projId: string, fileName: string) => {
-    setIsLoadingFile(true);
-    try {
-      const response = await fetch(`${BASE_URL}/get-file-content?projectId=${projId}&fileName=${encodeURIComponent(fileName)}`, {
-        headers: { 'ngrok-skip-browser-warning': 'true' }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const content = typeof data === 'string' ? data : (data.content || '');
-        setVfs(prev => ({ ...prev, [fileName]: content }));
-      } else {
-        addLog(`Error reading ${fileName}: ${response.statusText}`, 'error');
-      }
-    } catch (err) {
-      addLog(`Failed to fetch content for ${fileName}`, 'error');
-    } finally {
-      setIsLoadingFile(false);
-    }
-  };
+  }, [addLog, fetchFileContent]);
 
   const handleRefreshAll = useCallback(() => {
     fetchProjects();
@@ -296,7 +296,7 @@ export default function App() {
       setMcpSettings(parsed);
       loadWorkflows();
     }
-  }, [fetchProjects]);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('current_project_id', projectId);
@@ -688,7 +688,7 @@ export default function App() {
 
       {showSettings && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm">
-          <div className="bg-[#0f172a] border border-slate-800 rounded-3xl w-full max-w-sm p-8 shadow-2xl ring-1 ring-white/5 animate-in zoom-in fade-in duration-200">
+          <div className="bg-[#0f172a] border border-slate-800 rounded-3xl w-full max-sm p-8 shadow-2xl ring-1 ring-white/5 animate-in zoom-in fade-in duration-200">
             <h2 className="text-xl font-black text-white mb-1 tracking-tight">{t.setupTitle}</h2>
             <p className="text-[10px] text-slate-500 mb-8 font-bold uppercase tracking-widest">{t.setupDesc}</p>
             
@@ -771,7 +771,7 @@ export default function App() {
 
       <footer className="h-6 bg-[#020617] border-t border-slate-800 flex items-center justify-between px-6 text-[8px] text-slate-700 font-black uppercase tracking-[0.3em] shrink-0">
         <div className="flex items-center gap-4">
-          <span>AI-CRAFT MULTI-IDE v4.6</span>
+          <span>AIGoogle Studio v1.0</span>
           <span className="text-slate-800">|</span>
           <span className={isMcpActive ? 'text-indigo-900 font-bold' : 'text-slate-900'}>HYBRID MCP BRIDGE</span>
         </div>

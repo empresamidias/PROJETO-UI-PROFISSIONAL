@@ -1,6 +1,6 @@
 
-import { VFS, SyncResponse } from "../types";
-import { UPDATE_ENDPOINT } from "../constants";
+import { VFS, SyncResponse } from "../types.ts";
+import { UPDATE_ENDPOINT } from "../constants.tsx";
 
 const cleanCode = (code: string): string => {
   if (!code) return code;
