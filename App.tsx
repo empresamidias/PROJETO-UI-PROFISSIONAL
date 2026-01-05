@@ -19,6 +19,7 @@ const translations = {
     mcpConnected: 'MCP ATIVO',
     mcpIdle: 'MCP INATIVO',
     craftApp: 'CRIAR APLICAÇÃO',
+    refineApp: 'REFINAR PROJETO',
     generating: 'ARQUITETANDO...',
     workflowSelection: 'Escolha o Workflow',
     standalone: 'App Independente',
@@ -37,14 +38,15 @@ const translations = {
     preview: 'PREVIEW',
     configNeeded: 'Configure o n8n primeiro (+)',
     selectWf: 'Selecione o workflow para este projeto.',
-    multiFileNotice: 'Projeto Modular Gerado',
+    multiFileNotice: 'Projeto Modular Atualizado',
     projectId: 'PROJECT ID',
     noFiles: 'Nenhum arquivo no projeto',
     refreshProjects: 'Atualizar Projetos',
     loadingContent: 'Carregando conteúdo...',
     projectsHeader: 'PROJETOS ATIVOS',
     selectProjectToStart: 'Selecione um projeto para começar',
-    noProjectSelected: 'Nenhum projeto selecionado'
+    noProjectSelected: 'Nenhum projeto selecionado',
+    newProject: 'NOVO PROJETO'
   },
   'en': {
     title: 'AIGoogle Studio',
@@ -58,6 +60,7 @@ const translations = {
     mcpConnected: 'MCP ACTIVE',
     mcpIdle: 'MCP IDLE',
     craftApp: 'CRAFT APPLICATION',
+    refineApp: 'REFINE PROJECT',
     generating: 'ARCHITECTING...',
     workflowSelection: 'Choose Workflow',
     standalone: 'Standalone App',
@@ -76,14 +79,15 @@ const translations = {
     preview: 'PREVIEW',
     configNeeded: 'Configure n8n first (+)',
     selectWf: 'Select which workflow for this project.',
-    multiFileNotice: 'Modular Project Generated',
+    multiFileNotice: 'Modular Project Updated',
     projectId: 'PROJECT ID',
     noFiles: 'No files in project',
     refreshProjects: 'Refresh Projects',
     loadingContent: 'Loading content...',
     projectsHeader: 'ACTIVE PROJECTS',
     selectProjectToStart: 'Select a project to start',
-    noProjectSelected: 'No project selected'
+    noProjectSelected: 'No project selected',
+    newProject: 'NEW PROJECT'
   }
 };
 
@@ -158,7 +162,17 @@ export default function App() {
   const [activeFile, setActiveFile] = useState<FileName>('');
   const [projectId, setProjectId] = useState(() => localStorage.getItem('current_project_id') || '');
   const [projects, setProjects] = useState<string[]>([]);
-  const [prompt, setPrompt] = useState('');
+  
+  // Persistent prompts mapping: { [projectId]: promptValue }
+  const [projectPrompts, setProjectPrompts] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('studio_prompts') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  const [prompt, setPrompt] = useState(() => (projectId ? projectPrompts[projectId] || '' : ''));
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isRefreshingList, setIsRefreshingList] = useState(false);
@@ -258,7 +272,21 @@ export default function App() {
     localStorage.setItem('current_project_id', id);
     setPreviewKey(Date.now());
     addLog(`Selected project: ${id}`);
+    
+    // Switch prompt to project-specific prompt
+    const savedPrompt = projectPrompts[id] || '';
+    setPrompt(savedPrompt);
+    
     fetchFileList(id);
+  };
+
+  const handleNewProject = () => {
+    const newId = `project-${Date.now().toString(36)}`;
+    setProjectId(newId);
+    setPrompt('');
+    setVfs({});
+    setActiveFile('');
+    addLog('Started new project context');
   };
 
   const handleFileClick = (path: string) => {
@@ -298,9 +326,25 @@ export default function App() {
     }
   }, []);
 
+  // Sync internal prompt state when projectId changes externally
   useEffect(() => {
-    localStorage.setItem('current_project_id', projectId);
+    if (projectId) {
+      const savedPrompt = projectPrompts[projectId] || '';
+      setPrompt(savedPrompt);
+    }
   }, [projectId]);
+
+  // Save prompt to global mapping whenever it changes
+  useEffect(() => {
+    if (projectId) {
+      setProjectPrompts(prev => ({ ...prev, [projectId]: prompt }));
+    }
+  }, [prompt, projectId]);
+
+  // Persist prompts mapping to localStorage
+  useEffect(() => {
+    localStorage.setItem('studio_prompts', JSON.stringify(projectPrompts));
+  }, [projectPrompts]);
 
   const toggleFolder = (path: string) => {
     setExpandedFolders(prev => ({ ...prev, [path]: !prev[path] }));
@@ -360,12 +404,12 @@ export default function App() {
         details = await mcpService.getWorkflowDetails(mcpSettings.serverUrl, workflowId);
       }
 
-      const newVfs = await generateAppCode(prompt, details || undefined);
-      setPrompt('');
+      // Pass existing VFS to allow iterative updates
+      const newVfs = await generateAppCode(prompt, details || undefined, vfs);
       setVfs(newVfs);
       
       const bestMain = Object.keys(newVfs).find(k => k === 'App.tsx') || Object.keys(newVfs)[0];
-      setActiveFile(bestMain);
+      if (bestMain) setActiveFile(bestMain);
 
       const allFolders = Object.keys(newVfs)
         .filter(k => k.includes('/'))
@@ -499,12 +543,21 @@ export default function App() {
                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">{isMcpActive ? t.mcpConnected : t.mcpIdle}</p>
               </div>
             </div>
-            <button 
-              onClick={() => setShowSettings(true)}
-              className="w-8 h-8 rounded-lg bg-slate-900 border border-white/5 hover:bg-indigo-600/20 hover:text-indigo-400 flex items-center justify-center text-slate-400 transition-all shadow-inner"
-            >
-              <i className="fas fa-plus"></i>
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleNewProject}
+                title={t.newProject}
+                className="w-8 h-8 rounded-lg bg-slate-900 border border-white/5 hover:bg-emerald-600/20 hover:text-emerald-400 flex items-center justify-center text-slate-400 transition-all shadow-inner"
+              >
+                <i className="fas fa-file-circle-plus"></i>
+              </button>
+              <button 
+                onClick={() => setShowSettings(true)}
+                className="w-8 h-8 rounded-lg bg-slate-900 border border-white/5 hover:bg-indigo-600/20 hover:text-indigo-400 flex items-center justify-center text-slate-400 transition-all shadow-inner"
+              >
+                <i className="fas fa-plus"></i>
+              </button>
+            </div>
           </div>
 
           {/* Project Selector Section inside Left Sidebar */}
@@ -559,11 +612,11 @@ export default function App() {
 
             <button
               onClick={handleStartCraft}
-              disabled={isGenerating || !prompt.trim()}
+              disabled={isGenerating || !prompt.trim() || !projectId}
               className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl font-black text-[10px] tracking-[0.2em] shadow-xl shadow-indigo-600/10 active:scale-[0.98] flex items-center justify-center gap-3 transition-all ring-1 ring-white/10"
             >
               {isGenerating ? <i className="fas fa-atom fa-spin text-xs"></i> : <i className="fas fa-wand-magic-sparkles text-xs"></i>}
-              {isGenerating ? t.generating : t.craftApp}
+              {isGenerating ? t.generating : (Object.keys(vfs).length > 0 ? t.refineApp : t.craftApp)}
             </button>
             
             <div className="mt-auto">
