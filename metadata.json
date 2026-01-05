@@ -1,0 +1,8 @@
+{
+  "name": "AI-CRAFT STUDIO",
+  "description": "A professional Web IDE with Virtual File System management, AI-driven code generation, and remote Vite synchronization.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
