@@ -2,9 +2,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { VFS, Workflow } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-
 export const generateAppCode = async (prompt: string, workflowContext?: Workflow): Promise<VFS> => {
+  // Always initialize right before use to ensure latest API key if applicable as per guidelines.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+
   let mcpProtocol = `
 ## 🛠️ MCP BRIDGE CAPABILITIES
 You are integrated with an n8n MCP Bridge. You can consume technical readouts of workflows.
@@ -12,7 +13,7 @@ You are integrated with an n8n MCP Bridge. You can consume technical readouts of
 ## 🧭 CRAFTING PROTOCOL (MODULAR ROOT ARCHITECTURE)
 Assemble the application directly in the workspace root. Organization:
 
-1. **index.html**: Root file referencing '/main.tsx'.
+1. **index.html**: Root file referencing './main.tsx'. (CRITICAL: Use relative path with dot './main.tsx')
 2. **main.tsx**: React mounting logic.
 3. **App.tsx**: Main orchestrator. Import UI from './components/' and logic from './services/'.
 4. **components/**: UI components (e.g., components/Header.tsx).
@@ -43,7 +44,7 @@ Analyze the provided workflow (runData/pinData):
 
 CRITICAL RULES:
 - NO 'src/' FOLDER. Use root-level components/ and services/.
-- index.html references "/main.tsx".
+- index.html MUST reference "./main.tsx" (RELATIVE PATH).
 - All imports between files must be relative (e.g. './components/Header').
 - Use Tailwind CSS.
 - Export main component from App.tsx as: export const App = () => { ... }.

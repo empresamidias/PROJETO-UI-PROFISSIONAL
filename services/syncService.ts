@@ -17,7 +17,7 @@ const cleanCode = (code: string): string => {
   return cleaned.trim();
 };
 
-export const syncProject = async (vfs: VFS): Promise<SyncResponse> => {
+export const syncProject = async (vfs: VFS, projectId: string): Promise<SyncResponse> => {
   try {
     const cleanFiles: Partial<VFS> = {};
     for (const [name, content] of Object.entries(vfs)) {
@@ -30,7 +30,10 @@ export const syncProject = async (vfs: VFS): Promise<SyncResponse> => {
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': '69420',
       },
-      body: JSON.stringify({ files: cleanFiles }),
+      body: JSON.stringify({ 
+        projectId, // Send project ID for multi-project support
+        files: cleanFiles 
+      }),
     });
 
     if (!response.ok) {
